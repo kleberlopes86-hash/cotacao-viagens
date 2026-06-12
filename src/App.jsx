@@ -431,10 +431,12 @@ export default function App() {
           .map(
             (f) => `<tr>
               <td>${f.airline || "—"}</td><td>${f.fare || "—"}</td>
-              <td>${fmtDateFull(o.departDate)}<br>${f.departTime || ""}</td>
-              <td>${fmtDateFull(o.returnDate)}<br>${f.returnTime || ""}</td>
-              <td>${f.stops || "—"}</td><td>${f.baggage || "—"}</td>
-              <td><b>${BRL(f.price)}</b></td>
+              <td>${fmtDateFull(o.departDate)}<br>${f.departTime || ""}<br><b>${BRL(f.priceOutbound)}</b></td>
+              <td>${fmtDateFull(o.returnDate)}<br>${f.returnTime || ""}<br><b>${BRL(f.priceReturn)}</b></td>
+              <td>${f.stops || "—"}</td>
+              <td>${BRL(f.taxes)}</td>
+              <td>${BRL(f.baggagePrice)}</td>
+              <td><b>${BRL(flightTotal(f))}</b></td>
               <td>${f.link ? `<a href="${f.link}" target="_blank" rel="noopener">Ver ↗</a>` : "—"}</td>
             </tr>`
           )
@@ -471,15 +473,15 @@ export default function App() {
           </div>
           <div style="padding:16px">
             <h3 style="margin:0 0 8px">✈️ Voos</h3>
-            ${o.flights.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f1f5f9"><th>Cia</th><th>Tarifa</th><th>🛫 Ida</th><th>🛬 Volta</th><th>Escalas</th><th>Bagagem</th><th>Preço</th><th>Link</th></tr></thead><tbody>${flightRows}</tbody></table>` : "<i>Sem voos</i>"}
+            ${o.flights.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f1f5f9"><th>Cia</th><th>Tarifa</th><th>🛫 Ida</th><th>🛬 Volta</th><th>Escalas</th><th>Impostos</th><th>Bagagem</th><th>Total</th><th>Link</th></tr></thead><tbody>${flightRows}</tbody></table>` : "<i>Sem voos</i>"}
             <h3 style="margin:16px 0 8px">🏨 Hospedagem</h3>
             ${o.hotels.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f1f5f9"><th>Hotel</th><th>Check-in</th><th>Check-out</th><th>Diária</th><th>Total</th><th>Link</th></tr></thead><tbody>${hotelRows}</tbody></table>` : "<i>Sem hotéis</i>"}
             <h3 style="margin:16px 0 8px">🚗 Aluguel de Carro</h3>
             ${o.cars.length ? carCards : "<i>Sem carros</i>"}
             <div style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border-radius:10px;padding:16px;margin-top:16px">
-              <div>✈️ Voos: <b>${BRL(t.flights)}</b></div>
-              <div>🏨 Hospedagem: <b>${BRL(t.hotels)}</b></div>
-              <div>🚗 Aluguel de Carro: <b>${BRL(t.cars)}</b></div>
+              <div>✈️ Voos (mais barato): <b>${BRL(t.flights)}</b></div>
+              <div>🏨 Hospedagem (mais barato): <b>${BRL(t.hotels)}</b></div>
+              <div>🚗 Aluguel de Carro (mais barato): <b>${BRL(t.cars)}</b></div>
               <div style="margin-top:8px;font-size:22px;font-weight:800;color:#4ade80">TOTAL GERAL: ${BRL(t.grand)}</div>
             </div>
           </div>
@@ -666,15 +668,24 @@ export default function App() {
                 <div style={{ ...grid(3), marginBottom: 8 }}>
                   <div><label style={S.label}>Cia Aérea</label><input style={S.input} value={f.airline} onChange={(e) => updItem("flights", f.id, { airline: e.target.value })} /></div>
                   <div><label style={S.label}>Tarifa</label><input style={S.input} value={f.fare} onChange={(e) => updItem("flights", f.id, { fare: e.target.value })} /></div>
-                  <div><label style={S.label}><div><label style={S.label}>Preço (R$)</label><input type="number" style={S.input} value={f.price} onChange={(e) => updItem("flights", f.id, { price: e.target.value })} /></div>
+                  <div><label style={S.label}>Tarifa Ida (R$)</label><input type="number" style={S.input} value={f.priceOutbound} onChange={(e) => updItem("flights", f.id, { priceOutbound: e.target.value })} /></div>
+                </div>
+                <div style={{ ...grid(3), marginBottom: 8 }}>
+                  <div><label style={S.label}>Tarifa Volta (R$)</label><input type="number" style={S.input} value={f.priceReturn} onChange={(e) => updItem("flights", f.id, { priceReturn: e.target.value })} /></div>
+                  <div><label style={S.label}>Impostos (R$)</label><input type="number" style={S.input} value={f.taxes} onChange={(e) => updItem("flights", f.id, { taxes: e.target.value })} /></div>
+                  <div><label style={S.label}>Bagagem (R$)</label><input type="number" style={S.input} value={f.baggagePrice} onChange={(e) => updItem("flights", f.id, { baggagePrice: e.target.value })} /></div>
+                </div>
                 <div style={{ ...grid(3), marginBottom: 8 }}>
                   <div><label style={S.label}>Horário Ida</label><input type="time" style={S.input} value={f.departTime} onChange={(e) => updItem("flights", f.id, { departTime: e.target.value })} /></div>
                   <div><label style={S.label}>Horário Volta</label><input type="time" style={S.input} value={f.returnTime} onChange={(e) => updItem("flights", f.id, { returnTime: e.target.value })} /></div>
                   <div><label style={S.label}>Escalas</label><input style={S.input} value={f.stops} onChange={(e) => updItem("flights", f.id, { stops: e.target.value })} /></div>
                 </div>
                 <div style={{ ...grid(2), marginBottom: 8 }}>
-                  <div><label style={S.label}>Bagagem</label><input style={S.input} value={f.baggage} onChange={(e) => updItem("flights", f.id, { baggage: e.target.value })} /></div>
+                  <div><label style={S.label}>Bagagem (descrição)</label><input style={S.input} value={f.baggage} onChange={(e) => updItem("flights", f.id, { baggage: e.target.value })} /></div>
                   <div><label style={S.label}>Link da oferta</label><input style={S.input} value={f.link} onChange={(e) => updItem("flights", f.id, { link: e.target.value })} /></div>
+                </div>
+                <div style={{ background: "#ecfdf5", color: "#065f46", borderRadius: 8, padding: 10, fontWeight: 800, textAlign: "right", marginBottom: 8 }}>
+                  Total do voo: {BRL(flightTotal(f))}
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}>
@@ -792,7 +803,7 @@ export default function App() {
             const t = optionTotals(opt);
             return (
               <div style={{ background: "linear-gradient(135deg,#0f172a,#1e293b)", color: "#fff", borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>📊 Resumo Financeiro</div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>📊 Resumo Financeiro (melhor preço de cada)</div>
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #334155" }}><span>✈️ Voos</span><b>{BRL(t.flights)}</b></div>
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #334155" }}><span>🏨 Hospedagem</span><b>{BRL(t.hotels)}</b></div>
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #334155" }}><span>🚗 Aluguel de Carro</span><b>{BRL(t.cars)}</b></div>
