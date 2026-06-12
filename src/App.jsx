@@ -315,8 +315,8 @@ export default function App() {
 
   const searchHotels = async (o = opt) => {
     const sys =
-      "Você é assistente de cotação. Responda APENAS com array JSON puro. Cada item: {name, daily, total, link}. Pesquise EXCLUSIVAMENTE no Hotels.com. link deve ser a URL direta do hotel no formato https://www.hotels.com/ho{numero}/{slug}/ . Se não tiver certeza da URL, use https://www.hotels.com/. price em número BRL.";
-    const usr = `Pesquise 3 hotéis no Hotels.com em ${[o.hotelArea, o.hotelCity, o.hotelCountry].filter(Boolean).join(", ") || o.destination}, check-in ${fmtDate(o.departDate)}, check-out ${fmtDate(o.returnDate)}. Diária e total em BRL.`;
+      "Você é assistente de cotação. Responda APENAS com array JSON puro, sem texto fora do array. Cada item DEVE ter os campos: {name, daily, total, link}. O campo 'name' é OBRIGATÓRIO e deve conter o nome real e completo do hotel (ex: 'Hilton Grand Vacations Club'), nunca vazio, nunca genérico como 'Hotel 1'. Pesquise EXCLUSIVAMENTE no Hotels.com. O 'link' deve ser a URL direta do hotel no formato https://www.hotels.com/ho{numero}/{slug}/ . Se não tiver certeza da URL, use https://www.hotels.com/. daily e total em número (BRL).";
+    const usr = `Pesquise 3 hotéis reais no Hotels.com em ${[o.hotelArea, o.hotelCity, o.hotelCountry].filter(Boolean).join(", ") || o.destination}, check-in ${fmtDate(o.departDate)}, check-out ${fmtDate(o.returnDate)}. Para cada hotel informe o NOME REAL do estabelecimento, a diária e o total em BRL. Não invente nomes genéricos.`;
     const arr = await callClaude(sys, usr, true);
     const nights = nightsBetween(o.departDate, o.returnDate) || 1;
     const hotels = arr.slice(0, 3).map((h) => {
@@ -324,7 +324,7 @@ export default function App() {
       const daily = Number(h.daily) || 0;
       return {
         ...newHotel(),
-        name: h.name || "",
+        name: h.name || h.hotel || h.nome || "Hotel sugerido",
         checkin: o.departDate,
         checkout: o.returnDate,
         daily: String(daily || ""),
