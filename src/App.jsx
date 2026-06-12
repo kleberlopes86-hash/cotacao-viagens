@@ -44,6 +44,10 @@ const newFlight = () => ({
   id: uid(),
   airline: "",
   fare: "",
+  priceOutbound: "",
+  priceReturn: "",
+  taxes: "",
+  baggagePrice: "",
   price: "",
   departTime: "",
   returnTime: "",
@@ -118,18 +122,27 @@ const carCosts = (car) => {
   return { days, dailySub, protSub, extraSub, subtotal, fee, total };
 };
 
+// total de um voo = tarifa ida + tarifa volta + impostos + bagagem
+const flightTotal = (f) => {
+  const ida = Number(f.priceOutbound) || 0;
+  const volta = Number(f.priceReturn) || 0;
+  const tax = Number(f.taxes) || 0;
+  const bag = Number(f.baggagePrice) || 0;
+  const soma = ida + volta + tax + bag;
+  // se os campos novos estiverem vazios, cai no price antigo (compatibilidade)
+  return soma > 0 ? soma : Number(f.price) || 0;
+};
+
 const optionTotals = (opt) => {
-  // soma de todos (mantida para exibir o subtotal de cada categoria, se quiser)
-  const flightsAll = opt.flights.reduce((s, f) => s + (Number(f.price) || 0), 0);
+  const flightsAll = opt.flights.reduce((s, f) => s + flightTotal(f), 0);
   const hotelsAll = opt.hotels.reduce((s, h) => s + (Number(h.total) || 0), 0);
   const carsAll = opt.cars.reduce((s, c) => s + carCosts(c).total, 0);
 
-  // menor preço de cada categoria (considera apenas valores > 0)
   const minPos = (arr) => {
     const positivos = arr.filter((v) => v > 0);
     return positivos.length ? Math.min(...positivos) : 0;
   };
-  const flights = minPos(opt.flights.map((f) => Number(f.price) || 0));
+  const flights = minPos(opt.flights.map((f) => flightTotal(f)));
   const hotels = minPos(opt.hotels.map((h) => Number(h.total) || 0));
   const cars = minPos(opt.cars.map((c) => carCosts(c).total));
 
@@ -314,14 +327,17 @@ export default function App() {
         ? "com bagagem despachada incluída"
         : "apenas com bagagem de mão";
     const sys =
-      "Você é assistente de cotação de viagens. Responda APENAS com um array JSON puro, sem markdown, sem texto extra. Cada item: {airline, fare, price, departTime, returnTime, stops, baggage, link}. price em número (BRL). departTime/returnTime no formato HH:MM. link deve ser o site oficial da companhia (LATAM=https://www.latamairlines.com/br/pt, GOL=https://www.voegol.com.br, Azul=https://www.voeazul.com.br, American=https://www.aa.com, United=https://www.united.com, Delta=https://www.delta.com, Copa=https://www.copaair.com).";
-    const usr = `Pesquise 3 voos de companhias DIFERENTES (LATAM, GOL, Azul, American, United, Delta ou Copa) de ${o.origin} (${o.originCode}) para ${o.destination} (${o.destinationCode}), ida ${fmtDate(o.departDate)} volta ${fmtDate(o.returnDate)}, ${bag}. Inclua horários aproximados, escalas e preços em BRL.`;
+      "Você é assistente de cotação de viagens. Responda APENAS com um array JSON puro, sem markdown, sem texto extra. Cada item DEVE ter os campos: {airline, fare, priceOutbound, priceReturn, taxes, baggagePrice, departTime, returnTime, stops, baggage, link}. priceOutbound = valor da tarifa só da ida (BRL, número). priceReturn = valor da tarifa só da volta (BRL, número). taxes = impostos e taxas de embarque (BRL, número). baggagePrice = custo da bagagem despachada (BRL, número; use 0 se já incluída ou se for só bagagem de mão). departTime/returnTime no formato HH:MM. link deve ser o site oficial da companhia (LATAM=https://www.latamairlines.com/br/pt, GOL=https://www.voegol.com.br, Azul=https://www.voeazul.com.br, American=https://www.aa.com, United=https://www.united.com, Delta=https://www.delta.com, Copa=https://www.copaair.com).";
+    const usr = `Pesquise 3 voos de companhias DIFERENTES (LATAM, GOL, Azul, American, United, Delta ou Copa) de ${o.origin} (${o.originCode}) para ${o.destination} (${o.destinationCode}), ida ${fmtDate(o.departDate)} volta ${fmtDate(o.returnDate)}, ${bag}. Para cada voo, separe o valor da ida, o valor da volta, os impostos/taxas e o custo da bagagem despachada. Inclua horários aproximados, escalas e todos os preços em BRL.`;
     const arr = await callClaude(sys, usr, true);
     const flights = arr.slice(0, 3).map((f) => ({
       ...newFlight(),
       airline: f.airline || "",
       fare: f.fare || "",
-      price: String(f.price ?? ""),
+      priceOutbound: String(f.priceOutbound ?? ""),
+      priceReturn: String(f.priceReturn ?? ""),
+      taxes: String(f.taxes ?? ""),
+      baggagePrice: String(f.baggagePrice ?? ""),
       departTime: f.departTime || "",
       returnTime: f.returnTime || "",
       stops: f.stops || "",
@@ -650,8 +666,7 @@ export default function App() {
                 <div style={{ ...grid(3), marginBottom: 8 }}>
                   <div><label style={S.label}>Cia Aérea</label><input style={S.input} value={f.airline} onChange={(e) => updItem("flights", f.id, { airline: e.target.value })} /></div>
                   <div><label style={S.label}>Tarifa</label><input style={S.input} value={f.fare} onChange={(e) => updItem("flights", f.id, { fare: e.target.value })} /></div>
-                  <div><label style={S.label}>Preço (R$)</label><input type="number" style={S.input} value={f.price} onChange={(e) => updItem("flights", f.id, { price: e.target.value })} /></div>
-                </div>
+                  <div><label style={S.label}><div><label style={S.label}>Preço (R$)</label><input type="number" style={S.input} value={f.price} onChange={(e) => updItem("flights", f.id, { price: e.target.value })} /></div>
                 <div style={{ ...grid(3), marginBottom: 8 }}>
                   <div><label style={S.label}>Horário Ida</label><input type="time" style={S.input} value={f.departTime} onChange={(e) => updItem("flights", f.id, { departTime: e.target.value })} /></div>
                   <div><label style={S.label}>Horário Volta</label><input type="time" style={S.input} value={f.returnTime} onChange={(e) => updItem("flights", f.id, { returnTime: e.target.value })} /></div>
