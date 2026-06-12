@@ -119,12 +119,30 @@ const carCosts = (car) => {
 };
 
 const optionTotals = (opt) => {
-  const flights = opt.flights.reduce((s, f) => s + (Number(f.price) || 0), 0);
-  const hotels = opt.hotels.reduce((s, h) => s + (Number(h.total) || 0), 0);
-  const cars = opt.cars.reduce((s, c) => s + carCosts(c).total, 0);
-  return { flights, hotels, cars, grand: flights + hotels + cars };
-};
+  // soma de todos (mantida para exibir o subtotal de cada categoria, se quiser)
+  const flightsAll = opt.flights.reduce((s, f) => s + (Number(f.price) || 0), 0);
+  const hotelsAll = opt.hotels.reduce((s, h) => s + (Number(h.total) || 0), 0);
+  const carsAll = opt.cars.reduce((s, c) => s + carCosts(c).total, 0);
 
+  // menor preço de cada categoria (considera apenas valores > 0)
+  const minPos = (arr) => {
+    const positivos = arr.filter((v) => v > 0);
+    return positivos.length ? Math.min(...positivos) : 0;
+  };
+  const flights = minPos(opt.flights.map((f) => Number(f.price) || 0));
+  const hotels = minPos(opt.hotels.map((h) => Number(h.total) || 0));
+  const cars = minPos(opt.cars.map((c) => carCosts(c).total));
+
+  return {
+    flights,
+    hotels,
+    cars,
+    flightsAll,
+    hotelsAll,
+    carsAll,
+    grand: flights + hotels + cars,
+  };
+};
 // ---------- Styles ----------
 const S = {
   page: { minHeight: "100vh", background: "#f1f5f9", fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif", color: "#0f172a" },
