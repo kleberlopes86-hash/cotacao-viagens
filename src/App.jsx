@@ -61,6 +61,8 @@ const IcCopy = (p) => <Icon {...p} d={<><rect x="9" y="9" width="11" height="11"
 const IcPin = (p) => <Icon {...p} d={<><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.5" /></>} />;
 const IcTransfer = (p) => <Icon {...p} d={<><path d="M7 4v13M7 17l-3-3M7 17l3-3" /><path d="M17 20V7M17 7l-3 3M17 7l3 3" /></>} />;
 const IcMap = (p) => <Icon {...p} d={<><path d="M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z" /><path d="M9 4v14M15 6v14" /></>} />;
+const IcExternal = (p) => <Icon {...p} d={<><path d="M14 4h6v6" /><path d="M20 4 10 14" /><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" /></>} />;
+const IcSearchPrice = (p) => <Icon {...p} d={<><circle cx="11" cy="11" r="7" /><path d="m21 21-3.5-3.5" /><path d="M11 8v6M9 9.5h2.5a1.2 1.2 0 0 1 0 2.4H10a1.2 1.2 0 0 0 0 2.4h2.5" /></>} />;
 
 // Spinner de carregamento (gira via CSS keyframes injetados abaixo)
 const Spinner = ({ size = 14, color = "currentColor" }) => (
@@ -148,6 +150,31 @@ const carCosts = (car) => {
 const flightTotal = (f) => {
   const soma = (Number(f.priceOutbound) || 0) + (Number(f.priceReturn) || 0) + (Number(f.taxes) || 0) + (Number(f.baggagePrice) || 0);
   return soma > 0 ? soma : Number(f.price) || 0;
+};
+
+// Gera links de busca pré-preenchidos (rota + datas) para os buscadores.
+// Formatos validados: Kayak, Skyscanner e Momondo abrem direto na busca.
+const flightSearchLinks = (o) => {
+  const orig = (o.originCode || "").trim().toUpperCase();
+  const dest = (o.destinationCode || "").trim().toUpperCase();
+  const dep = o.departDate; // AAAA-MM-DD
+  const ret = o.returnDate; // AAAA-MM-DD
+  const short = (d) => (d ? d.slice(2).replace(/-/g, "") : ""); // AAMMDD p/ Skyscanner
+  const ready = orig && dest && dep;
+
+  const kayak = ready
+    ? `https://www.kayak.com.br/flights/${orig}-${dest}/${dep}${ret ? "/" + ret : ""}?sort=price_a`
+    : "https://www.kayak.com.br/flights";
+
+  const skyscanner = ready
+    ? `https://www.skyscanner.com.br/transport/flights/${orig.toLowerCase()}/${dest.toLowerCase()}/${short(dep)}${ret ? "/" + short(ret) : ""}/`
+    : "https://www.skyscanner.com.br";
+
+  const momondo = ready
+    ? `https://www.momondo.com.br/flight-search/${orig}-${dest}/${dep}${ret ? "/" + ret : ""}?sort=price_a`
+    : "https://www.momondo.com.br";
+
+  return { kayak, skyscanner, momondo, ready };
 };
 
 const optionTotals = (opt) => {
@@ -586,6 +613,30 @@ export default function App() {
                 <button style={btn("soft")} onClick={() => addItem("flights", newFlight)}><IcPlus size={14} />Voo</button>
               </div>
             </div>
+            {(() => {
+              const L = flightSearchLinks(opt);
+              const searchBtn = (label, url, brand) => (
+                <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 9, background: brand, color: "#fff", fontSize: 12.5, fontWeight: 500, textDecoration: "none" }}>
+                  {label}<IcExternal size={13} />
+                </a>
+              );
+              return (
+                <div style={{ border: `1px solid ${LINE}`, borderRadius: 12, padding: 14, marginBottom: 14, background: SOFT }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <IcSearchPrice size={16} stroke={ACCENT} />
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: INK }}>Comparar preços reais</span>
+                    {L.ready
+                      ? <span style={{ fontSize: 11.5, color: MUTED }}>· {opt.originCode} → {opt.destinationCode}, rota e datas preenchidas</span>
+                      : <span style={{ fontSize: 11.5, color: "#9a6a4f" }}>· preencha origem, destino e data de ida</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {searchBtn("Kayak", L.kayak, "#ff690f")}
+                    {searchBtn("Skyscanner", L.skyscanner, "#0770e3")}
+                    {searchBtn("Momondo", L.momondo, "#e91e63")}
+                  </div>
+                </div>
+              );
+            })()}
             {opt.flights.map((f) => {
               const stopsLabel = (sc) => { const n = Number(sc); if (sc === "" || isNaN(n)) return null; return n === 0 ? "Voo direto" : `${n} escala${n > 1 ? "s" : ""}`; };
               const scOut = stopsLabel(f.stopsCount);
