@@ -246,33 +246,28 @@ function extractJSON(text) {
   throw new Error("Não foi possível extrair JSON da resposta");
 }
 
-const IN_CLAUDE = typeof window !== "undefined" && /claude\.ai|claudeusercontent/.test(window.location.host);
-
+// Este app SEMPRE conversa com o backend (/api/search), tanto no localhost
+// quanto na Netlify. O backend é quem guarda a chave da API e fala com a
+// Anthropic. Nunca chamamos api.anthropic.com direto do navegador (isso
+// exporia a chave e quebraria por CORS).
 async function callClaude(systemPrompt, userPrompt, useSearch) {
-  if (!IN_CLAUDE) {
-    let res;
-    try {
-      res = await fetch("/api/search", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system: systemPrompt, prompt: userPrompt, useSearch }),
-      });
-    } catch (e) { throw new Error("Servidor indisponível. Inicie o sistema com npm start."); }
-    const out = await res.json();
-    if (!res.ok || out.error) throw new Error(out.error || "Erro do servidor");
-    return out.data;
-  }
-  const body = { model: "claude-sonnet-4-6", max_tokens: 4000, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] };
-  if (useSearch) body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
   let res;
   try {
-    res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  } catch (e) { throw new Error("Falha de rede ao consultar a IA"); }
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "Erro retornado pela IA");
-  if (!Array.isArray(data.content)) throw new Error("Resposta da IA sem conteúdo");
-  const text = data.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
-  if (!text) throw new Error("A IA não retornou texto");
-  return extractJSON(text);
+    res = await fetch("/api/search", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ system: systemPrompt, prompt: userPrompt, useSearch }),
+    });
+  } catch (e) {
+    throw new Error("Servidor indisponível. Inicie o sistema com npm start (no localhost) ou verifique o deploy na Netlify.");
+  }
+  let out;
+  try {
+    out = await res.json();
+  } catch (e) {
+    throw new Error("O servidor não respondeu em formato válido. Confirme que o backend está no ar.");
+  }
+  if (!res.ok || out.error) throw new Error(out.error || "Erro do servidor");
+  return out.data;
 }
 
 // ============================================================
