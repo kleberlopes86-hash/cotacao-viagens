@@ -133,6 +133,36 @@ const flightTotal = (f) => {
   return soma > 0 ? soma : Number(f.price) || 0;
 };
 
+// Gera links de busca pré-preenchidos (rota + datas) para os buscadores.
+// Datas no formato AAAA-MM-DD (o que o sistema usa); converte quando preciso.
+const flightSearchLinks = (o) => {
+  const orig = (o.originCode || "").trim().toUpperCase();
+  const dest = (o.destinationCode || "").trim().toUpperCase();
+  const dep = o.departDate; // AAAA-MM-DD
+  const ret = o.returnDate; // AAAA-MM-DD
+  // formato AAMMDD para o Skyscanner
+  const short = (d) => (d ? d.slice(2).replace(/-/g, "") : "");
+  const temRota = orig && dest && dep;
+
+  // Google Flights: busca por texto é o formato mais estável
+  const googleQuery = encodeURIComponent(
+    `voos de ${orig || o.origin} para ${dest || o.destination} ida ${dep}${ret ? " volta " + ret : ""}`
+  );
+  const google = `https://www.google.com/travel/flights?q=${googleQuery}`;
+
+  // Kayak: /flights/GRU-LAS/2026-08-10/2026-08-20
+  const kayak = temRota
+    ? `https://www.kayak.com.br/flights/${orig}-${dest}/${dep}${ret ? "/" + ret : ""}`
+    : "https://www.kayak.com.br/flights";
+
+  // Skyscanner: /transport/flights/gru/las/250810/250820/
+  const skyscanner = temRota
+    ? `https://www.skyscanner.com.br/transport/flights/${orig.toLowerCase()}/${dest.toLowerCase()}/${short(dep)}${ret ? "/" + short(ret) : ""}/`
+    : "https://www.skyscanner.com.br";
+
+  return { google, kayak, skyscanner, temRota };
+};
+
 const optionTotals = (opt) => {
   const flightsAll = opt.flights.reduce((s, f) => s + flightTotal(f), 0);
   const hotelsAll = opt.hotels.reduce((s, h) => s + (Number(h.total) || 0), 0);
@@ -636,10 +666,13 @@ export default function App() {
 
             {/* Links rápidos */}
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4 }}>Buscar voos</div>
-              {[["Kayak", "https://www.kayak.com.br/flights"], ["Google Flights", "https://www.google.com/travel/flights"], ["Skyscanner", "https://www.skyscanner.com.br"], ["Decolar", "https://www.decolar.com"]].map(([n, u]) => (
-                <a key={n} href={u} target="_blank" rel="noopener noreferrer" style={{ ...S.pill, background: "#dbeafe", color: "#1e40af" }}>{n}</a>
-              ))}
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 4 }}>Buscar voos (rota e datas preenchidas)</div>
+              {(() => {
+                const L = flightSearchLinks(opt);
+                return [["Google Flights", L.google], ["Kayak", L.kayak], ["Skyscanner", L.skyscanner]].map(([n, u]) => (
+                  <a key={n} href={u} target="_blank" rel="noopener noreferrer" style={{ ...S.pill, background: "#dbeafe", color: "#1e40af" }}>{n}</a>
+                ));
+              })()}
               <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", margin: "6px 0 4px" }}>Buscar hotéis</div>
               <a href="https://www.hotels.com" target="_blank" rel="noopener noreferrer" style={{ ...S.pill, background: "#fce7f3", color: "#9d174d" }}>Hotels.com</a>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", margin: "6px 0 4px" }}>Buscar carros</div>
@@ -658,6 +691,22 @@ export default function App() {
                 <button style={{ ...S.btn, background: "#e2e8f0", color: "#334155" }} onClick={() => addItem("flights", newFlight)}>+ Voo</button>
               </div>
             </div>
+            {(() => {
+              const L = flightSearchLinks(opt);
+              return (
+                <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1e40af", marginBottom: 8 }}>
+                    🔎 Ver preços reais (rota e datas já preenchidas)
+                    {!L.temRota && <span style={{ fontWeight: 400, color: "#64748b" }}> — preencha origem, destino e data de ida</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <a href={L.google} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, background: "#1a73e8", color: "#fff", textDecoration: "none" }}>Google Flights ↗</a>
+                    <a href={L.kayak} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, background: "#ff690f", color: "#fff", textDecoration: "none" }}>Kayak ↗</a>
+                    <a href={L.skyscanner} target="_blank" rel="noopener noreferrer" style={{ ...S.btn, background: "#0770e3", color: "#fff", textDecoration: "none" }}>Skyscanner ↗</a>
+                  </div>
+                </div>
+              );
+            })()}
             {opt.flights.map((f) => (
               <div key={f.id} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, marginBottom: 10 }}>
                 <div style={{ display: "flex", gap: 8, fontSize: 12, background: "#f1f5f9", borderRadius: 8, padding: 8, marginBottom: 10, flexWrap: "wrap" }}>
