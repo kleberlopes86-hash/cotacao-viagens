@@ -7,25 +7,7 @@ export default async (req) => {
 
   try {
     const API_KEY = process.env.ANTHROPIC_API_KEY;
-
-    // ---- DIAGNÓSTICO TEMPORÁRIO ----
-    // Mostra o que a função realmente recebe do ambiente, sem expor a chave inteira.
-    // (Vamos remover este bloco depois de descobrir o problema.)
-    if (!API_KEY) {
-      return json({
-        error: "DIAGNOSTICO: ANTHROPIC_API_KEY nao foi encontrada no ambiente (process.env). A funcao nao esta enxergando a variavel.",
-      }, 500);
-    }
-    const diag = {
-      tamanho: API_KEY.length,
-      comeca_com: API_KEY.slice(0, 10),
-      termina_com: API_KEY.slice(-6),
-      tem_espaco_inicio_ou_fim: API_KEY !== API_KEY.trim(),
-      tem_nome_grudado: API_KEY.includes("ANTHROPIC_API_KEY"),
-      tem_quebra_de_linha: /[\r\n]/.test(API_KEY),
-      tem_aspas: API_KEY.includes('"') || API_KEY.includes("'"),
-    };
-    // ---- FIM DO DIAGNÓSTICO ----
+    if (!API_KEY) return json({ error: "ANTHROPIC_API_KEY não configurada no servidor" }, 500);
 
     const { system, prompt, useSearch } = await req.json();
     if (!prompt) return json({ error: "prompt ausente" }, 400);
@@ -49,13 +31,7 @@ export default async (req) => {
     });
 
     const data = await r.json();
-
-    // Se a Anthropic recusar, devolvemos o diagnóstico junto pra entender o porquê.
-    if (data.error) {
-      return json({
-        error: (data.error.message || "Erro da API Anthropic") + " | DIAGNOSTICO: " + JSON.stringify(diag),
-      }, 502);
-    }
+    if (data.error) return json({ error: data.error.message || "Erro da API Anthropic" }, 502);
     if (!Array.isArray(data.content)) return json({ error: "Resposta da API sem conteúdo" }, 502);
 
     const text = data.content
@@ -72,7 +48,6 @@ export default async (req) => {
   }
 };
 
-// Mesma função de extração de JSON usada no front
 function extractJSON(text) {
   const clean = text.replace(/```json/gi, "").replace(/```/g, "");
   for (let i = 0; i < clean.length; i++) {
