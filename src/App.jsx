@@ -131,7 +131,7 @@ const newOption = (index = 0) => ({
   origin: "", originCode: "", destination: "", destinationCode: "",
   departDate: "", returnDate: "", event: "", baggageType: "checked",
   flights: [], hotels: [], cars: [],
-  hotelCountry: "", hotelCity: "", hotelArea: "", carCountry: "", carCity: "", carArea: "",
+  hotelCountry: "", hotelCity: "", hotelArea: "", hotelAdults: "2", hotelChildren: "0", carCountry: "", carCity: "", carArea: "",
 });
 
 // ---------- Cálculos ----------
@@ -332,8 +332,13 @@ export default function App() {
   };
 
   const searchHotels = async (o = opt) => {
-    const sys = "Você é assistente de cotação. Responda APENAS com array JSON puro, sem texto fora do array. Cada item DEVE ter: {name, daily, total, link}. O campo 'name' é OBRIGATÓRIO e deve conter o nome real e completo do hotel, nunca vazio nem genérico. Pesquise EXCLUSIVAMENTE no Hotels.com. O 'link' deve ser a URL direta do hotel no formato https://www.hotels.com/ho{numero}/{slug}/ . Se não tiver certeza, use https://www.hotels.com/. daily e total em número (BRL).";
-    const usr = `Pesquise 3 hotéis reais no Hotels.com em ${[o.hotelArea, o.hotelCity, o.hotelCountry].filter(Boolean).join(", ") || o.destination}, check-in ${fmtDate(o.departDate)}, check-out ${fmtDate(o.returnDate)}. Informe o nome real, a diária e o total em BRL.`;
+    const adults = Number(o.hotelAdults) || 1;
+    const children = Number(o.hotelChildren) || 0;
+    const pax = children > 0
+      ? `para ${adults} adulto(s) e ${children} criança(s)`
+      : `para ${adults} adulto(s)`;
+    const sys = "Você é assistente de cotação. Responda APENAS com array JSON puro, sem texto fora do array. Cada item DEVE ter: {name, daily, total, link}. O campo 'name' é OBRIGATÓRIO e deve conter o nome real e completo do hotel, nunca vazio nem genérico. Pesquise EXCLUSIVAMENTE no Hotels.com. Os hotéis e os quartos sugeridos DEVEM acomodar a quantidade de hóspedes informada (capacidade suficiente de pessoas no quarto, ou quartos/camas adequados). O 'link' deve ser a URL direta do hotel no formato https://www.hotels.com/ho{numero}/{slug}/ . Se não tiver certeza, use https://www.hotels.com/. daily e total em número (BRL).";
+    const usr = `Pesquise 3 hotéis reais no Hotels.com em ${[o.hotelArea, o.hotelCity, o.hotelCountry].filter(Boolean).join(", ") || o.destination}, check-in ${fmtDate(o.departDate)}, check-out ${fmtDate(o.returnDate)}, ${pax}. Os quartos precisam acomodar ${pax}. Informe o nome real, a diária e o total em BRL.`;
     const arr = await callClaude(sys, usr, true);
     const nights = nightsBetween(o.departDate, o.returnDate) || 1;
     updateOption(o.id, {
@@ -712,6 +717,13 @@ export default function App() {
                 <input {...fp("hc")} placeholder="País" value={opt.hotelCountry} onChange={(e) => updateOption(opt.id, { hotelCountry: e.target.value })} />
                 <input {...fp("hci")} placeholder="Cidade" value={opt.hotelCity} onChange={(e) => updateOption(opt.id, { hotelCity: e.target.value })} />
                 <input {...fp("ha")} placeholder="Bairro / região" value={opt.hotelArea} onChange={(e) => updateOption(opt.id, { hotelArea: e.target.value })} />
+              </div>
+            </div>
+            <div style={{ background: SOFT, borderRadius: 10, padding: 14, marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}><IcBuilding size={14} stroke={MUTED} /><span style={{ fontSize: 11, fontWeight: 600, color: MUTED, textTransform: "uppercase", letterSpacing: "0.06em" }}>Hóspedes</span></div>
+              <div style={grid(2)}>
+                <div><label style={S.label}>Adultos</label><input type="number" min="1" {...fp("hadt")} placeholder="2" value={opt.hotelAdults} onChange={(e) => updateOption(opt.id, { hotelAdults: e.target.value })} /></div>
+                <div><label style={S.label}>Crianças</label><input type="number" min="0" {...fp("hchd")} placeholder="0" value={opt.hotelChildren} onChange={(e) => updateOption(opt.id, { hotelChildren: e.target.value })} /></div>
               </div>
             </div>
             {opt.hotels.map((h) => (
